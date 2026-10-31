@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>گوشی من</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #000000;
+    --surface: #121212;
+    --surface-light: #1e1e1e;
+    --ink: #ffffff;
+    --ink-muted: #a0a0a0;
+    --accent: #4caf50;
+    --accent-2: #2196f3;
+    --danger: #f44336;
+    --warning: #ff9800;
+    --line: rgba(255,255,255,0.06);
+    --radius: 28px;
+    --radius-sm: 16px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Vazirmatn", "Tahoma", sans-serif;
+    background: #000;
+    color: var(--ink);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* Prevent pull-to-refresh on mobile */
+  body { overscroll-behavior-y: none; touch-action: manipulation; }
+
+  .phone-frame {
+    width: 100vw; height: 100vh;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 150px; height: 26px; background: #000;
+    border-radius: 0 0 18px 18px; z-index: 1000;
+  }
+
+  .screen {
+    flex: 1; position: relative; overflow: hidden;
+    background: var(--bg); border-radius: 0;
+  }
+
+  .status-bar {
+    height: 44px; display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 8px 20px 4px; font-size: 14px; font-weight: 600;
+    color: var(--ink); z-index: 900; position: relative; letter-spacing: 0.5px;
+  }
+
+  /* LOCK SCREEN */
+  .lock-screen {
+    position: absolute; inset: 0;
+    background: linear-gradient(165deg, #0d1b2a 0%, #1b263b 30%, #415a77 60%, #778da9 100%);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-start; padding-top: 100px; z-index: 500;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+  .lock-screen.hidden { transform: translateY(-105%); }
+  .lock-time { font-size: 72px; font-weight: 200; letter-spacing: -3px; }
+  .lock-date { font-size: 17px; color: rgba(255,255,255,0.85); margin-top: 10px; font-weight: 400; }
+  .lock-hint { position: absolute; bottom: 70px; font-size: 14px; color: rgba(255,255,255,0.55); animation: pulse 2.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:1} }
+
+  /* HOME */
+  .home-screen {
+    position: absolute; inset: 0;
+    padding: 70px 18px 110px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 18px 6px; align-content: start;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    background: var(--bg);
+  }
+  .home-screen.active { opacity: 1; pointer-events: all; }
+
+  .app-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+  .app-icon .icon-box {
+    width: 60px; height: 60px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; transition: transform 0.1s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.35);
+  }
+  .app-icon:active .icon-box { transform: scale(0.88); }
+  .app-icon .label { font-size: 12px; color: var(--ink); font-weight: 400; }
+
+  .bg-calc { background: linear-gradient(135deg, #ff9800, #e65100); }
+  .bg-camera { background: linear-gradient(135deg, #2196f3, #0d47a1); }
+  .bg-music { background: linear-gradient(135deg, #e91e63, #880e4f); }
+  .bg-recorder { background: linear-gradient(135deg, #9c27b0, #4a148c); }
+  .bg-gallery { background: linear-gradient(135deg, #4caf50, #1b5e20); }
+  .bg-settings { background: linear-gradient(135deg, #607d8b, #263238); }
+
+  /* APP SCREENS */
+  .app-screen {
+    position: absolute; inset: 0; background: var(--bg);
+    transform: translateY(110%); z-index: 600;
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    display: flex; flex-direction: column;
+  }
+  .app-screen.open { transform: translateY(0); }
+
+  .app-header {
+    height: 56px; display: flex; align-items: center;
+    padding: 0 10px; gap: 6px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+  }
+  .app-header h2 { margin: 0; font-size: 18px; font-weight: 500; flex: 1; }
+  .app-header .back-button { width:auto; min-width:76px; padding:0 10px; border-radius:22px; font-size:14px; white-space:nowrap; }
+  .btn-icon {
+    width: 40px; height: 40px; border-radius: 50%; background: transparent;
+    border: none; color: var(--ink); font-size: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-icon:active { background: rgba(255,255,255,0.1); }
+
+  .app-body { flex: 1; overflow-y: auto; padding: 12px; -webkit-overflow-scrolling: touch; }
+
+  /* CALCULATOR */
+  .calc-display {
+    background: var(--surface); border-radius: var(--radius-sm);
+    padding: 18px; text-align: left; margin-bottom: 10px;
+  }
+  .calc-history { font-size: 14px; color: var(--ink-muted); min-height: 20px; direction: ltr; text-align: right; }
+  .calc-result { font-size: 46px; font-weight: 250; direction: ltr; text-align: right; overflow-x: auto; white-space: nowrap; }
+  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .calc-btn {
+    aspect-ratio: 1; border-radius: 50%; border: none; font-size: 24px;
+    font-family: inherit; font-weight: 500; cursor: pointer;
+    background: var(--surface-light); color: var(--ink); transition: filter 0.08s;
+  }
+  .calc-btn:active { filter: brightness(1.25); }
+  .calc-btn.accent { background: var(--accent); color: #000; }
+  .calc-btn.operator { background: var(--warning); color: #000; }
+  .calc-btn.danger { background: var(--danger); color: #fff; }
+  .calc-btn.zero { grid-column: span 2; aspect-ratio: auto; border-radius: 50px; }
+
+  /* CAMERA */
+  .camera-view {
+    flex: 1; position: relative; background: #000;
+    border-radius: var(--radius-sm); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .camera-view video { width: 100%; height: 100%; object-fit: cover; }
+  .camera-placeholder {
+    color: var(--ink-muted); text-align: center; padding: 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .camera-controls {
+    height: 110px; display: flex; align-items: center; justify-content: center;
+    gap: 36px; padding-bottom: 12px; flex-shrink: 0;
+  }
+  .shutter {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 4px solid #fff; background: #fff; cursor: pointer;
+    padding: 4px; box-shadow: 0 0 0 2px #333;
+  }
+  .shutter-inner { width: 100%; height: 100%; border-radius: 50%; background: #fff; border: 2px solid #333; }
+  .shutter:active .shutter-inner { background: #ccc; }
+  .flip-btn {
+    font-size: 26px; background: rgba(255,255,255,0.15);
+    width: 50px; height: 50px; border-radius: 50%; border: none; color: #fff; cursor: pointer;
+  }
+  .gallery-thumb {
+    width: 50px; height: 50px; border-radius: 10px;
+    background: var(--surface-light); overflow: hidden;
+    border: 2px solid #fff; cursor: pointer; flex-shrink: 0;
+  }
+  .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .cam-overlay {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(0,0,0,0.5); color: #fff; padding: 4px 10px;
+    border-radius: 12px; font-size: 12px; z-index: 10;
+  }
+
+  /* MUSIC */
+  .music-player { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 6px; }
+  .album-art {
+    width: 230px; height: 230px; border-radius: 22px;
+    background: linear-gradient(135deg, #e91e63, #4a148c);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 90px; color: rgba(255,255,255,0.95);
+    position: relative; overflow: hidden;
+  }
+  .album-art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .track-info { text-align: center; margin-top: 4px; }
+  .track-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .track-artist { font-size: 14px; color: var(--ink-muted); }
+  .progress-wrap { width: 100%; padding: 0 8px; margin-top: 4px; }
+  .progress-bar {
+    width: 100%; height: 5px; background: var(--surface-light);
+    border-radius: 3px; overflow: hidden; cursor: pointer; touch-action: none;
+  }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.05s linear; }
+  .time-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-muted); margin-top: 6px; }
+  .music-controls { display: flex; align-items: center; gap: 28px; margin-top: 2px; }
+  .music-btn { background: none; border: none; color: var(--ink); font-size: 32px; cursor: pointer; }
+  .music-btn.big { font-size: 58px; }
+  .music-btn:active { opacity: 0.55; }
+  .upload-wrap { margin-top: 8px; text-align: center; }
+  .file-input { display: none; }
+  .file-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface-light); color: var(--ink);
+    padding: 10px 22px; border-radius: 24px; cursor: pointer;
+    font-size: 14px; border: 1px solid var(--line);
+  }
+  .playlist { width: 100%; margin-top: 10px; }
+  .playlist-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; border-radius: 12px; cursor: pointer;
+  }
+  .playlist-item:hover, .playlist-item.active { background: var(--surface-light); }
+  .pl-num { width: 30px; text-align: center; color: var(--ink-muted); font-size: 12px; }
+  .pl-info { flex: 1; }
+  .pl-title { font-size: 14px; }
+  .pl-dur { font-size: 12px; color: var(--ink-muted); }
+
+  /* RECORDER */
+  .rec-container { display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 20px; }
+  .rec-visualizer {
+    width: 100%; height: 160px; background: var(--surface);
+    border-radius: var(--radius-sm); position: relative; overflow: hidden;
+  }
+  .rec-visualizer canvas { width: 100%; height: 100%; }
+  .rec-btn {
+    width: 90px; height: 90px; border-radius: 50%; border: none;
+    font-size: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; box-shadow: 0 6px 20px rgba(244,67,54,0.4);
+  }
+  .rec-btn.recording { background: var(--danger); color: #fff; box-shadow: 0 0 0 6px rgba(244,67,54,0.25); }
+  .rec-btn.stopped { background: var(--surface-light); color: var(--danger); border: 3px solid var(--danger); }
+  .rec-btn:active { transform: scale(0.92); }
+  .rec-status { font-size: 15px; color: var(--ink-muted); margin-top: 4px; }
+  .rec-timer { font-size: 32px; font-weight: 300; font-variant-numeric: tabular-nums; direction: ltr; }
+  .recordings { width: 100%; margin-top: 10px; }
+  .rec-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; border-radius: 12px; background: var(--surface-light); margin-bottom: 8px;
+  }
+  .rec-item button { background: none; border: none; color: var(--accent); font-size: 24px; cursor: pointer; }
+
+  /* GALLERY */
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  .gallery-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; cursor: pointer; background: var(--surface-light); }
+
+  /* DOCK */
+  .dock {
+    position: absolute; bottom: 10px; left: 16px; right: 16px;
+    height: 74px; background: rgba(255,255,255,0.09);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border-radius: 26px; display: flex; justify-content: space-around;
+    align-items: center; z-index: 400; padding: 0 10px;
+  }
+  .dock .app-icon .icon-box { width: 52px; height: 52px; font-size: 24px; }
+
+  /* MODAL */
+  .modal {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.96);
+    z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal img { max-width: 100%; max-height: 82%; border-radius: 12px; }
+  .modal .close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 22px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* TOAST */
+  .toast {
+    position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(30px);
+    background: var(--surface-light); color: var(--ink); padding: 10px 18px; border-radius: 24px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.35s; z-index: 2500; white-space: nowrap; border: 1px solid var(--line);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Haptic feedback ring */
+  @media (hover: none) {
+    .calc-btn:active, .music-btn:active, .shutter:active, .rec-btn:active { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="notch"></div>
+
+  <div class="screen">
+    <div class="status-bar">
+      <span id="clock">12:00</span>
+      <span>📶 5G &nbsp;🔋 88%</span>
+    </div>
+
+    <!-- LOCK SCREEN -->
+    <div class="lock-screen" id="lockScreen" onclick="unlock()">
+      <div class="lock-time" id="lockTime">12:00</div>
+      <div class="lock-date" id="lockDate">-</div>
+      <div class="lock-hint">برای باز کردن ضربه بزنید</div>
+    </div>
+
+    <!-- HOME SCREEN -->
+    <div class="home-screen" id="homeScreen">
+      <div class="app-icon" onclick="openApp('calc')">
+        <div class="icon-box bg-calc">🧮</div>
+        <div class="label">ماشین‌حساب</div>
+      </div>
+      <div class="app-icon" onclick="openApp('camera')">
+        <div class="icon-box bg-camera">📷</div>
+        <div class="label">دوربین</div>
+      </div>
+      <div class="app-icon" onclick="openApp('music')">
+        <div class="icon-box bg-music">🎵</div>
+        <div class="label">موسیقی</div>
+      </div>
+      <div class="app-icon" onclick="openApp('recorder')">
+        <div class="icon-box bg-recorder">🎙️</div>
+        <div class="label">ضبط صدا</div>
+      </div>
+      <div class="app-icon" onclick="openApp('gallery')">
+        <div class="icon-box bg-gallery">🖼️</div>
+        <div class="label">گالری</div>
+      </div>
+      <div class="app-icon" onclick="openApp('settings')">
+        <div class="icon-box bg-settings">⚙️</div>
+        <div class="label">تنظیمات</div>
+      </div>
+    </div>
+
+    <!-- DOCK -->
+    <div class="dock">
+      <div class="app-icon" onclick="vibrate(); showToast('📞 تماس فعال نیست')">
+        <div class="icon-box bg-calc">📞</div>
+      </div>
+      <div class="app-icon" onclick="vibrate(); showToast('🌐 مرورگر فعال نیست')">
+        <div class="icon-box bg-camera">🌐</div>
+      </div>
+      <div class="app-icon" onclick="vibrate(); showToast('💬 پیامک فعال نیست')">
+        <div class="icon-box bg-music">💬</div>
+      </div>
+      <div class="app-icon" onclick="openApp('camera')">
+        <div class="icon-box bg-gallery">📷</div>
+      </div>
+    </div>
+
+    <!-- APP: CALCULATOR -->
+    <div class="app-screen" id="app-calc">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>ماشین‌حساب</h2>
+      </div>
+      <div class="app-body">
+        <div class="calc-display">
+          <div class="calc-history" id="calcHistory"></div>
+          <div class="calc-result" id="calcResult">0</div>
+        </div>
+        <div class="calc-grid">
+          <button class="calc-btn danger" onclick="vibrate(); calcClear()">C</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('(')">(</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns(')')">)</button>
+          <button class="calc-btn operator" onclick="vibrate(); calcIns('/')">÷</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('7')">7</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('8')">8</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('9')">9</button>
+          <button class="calc-btn operator" onclick="vibrate(); calcIns('*')">×</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('4')">4</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('5')">5</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('6')">6</button>
+          <button class="calc-btn operator" onclick="vibrate(); calcIns('-')">−</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('1')">1</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('2')">2</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('3')">3</button>
+          <button class="calc-btn operator" onclick="vibrate(); calcIns('+')">+</button>
+          <button class="calc-btn zero" onclick="vibrate(); calcIns('0')">0</button>
+          <button class="calc-btn" onclick="vibrate(); calcIns('.')">.</button>
+          <button class="calc-btn accent" onclick="vibrate(); calcEqual()">=</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP: CAMERA -->
+    <div class="app-screen" id="app-camera">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>دوربین</h2>
+      </div>
+      <div class="app-body" style="display:flex;flex-direction:column;padding:0;">
+        <div class="camera-view">
+          <div class="cam-overlay" id="camOverlay" style="display:none;">📷 LIVE</div>
+          <video id="camVideo" autoplay playsinline muted></video>
+          <canvas id="camCanvas" style="display:none;"></canvas>
+          <div class="camera-placeholder" id="camPlaceholder">
+            <div style="font-size:52px;margin-bottom:12px;">📷</div>
+            <div style="font-size:15px;">برای اتصال به دوربین گوشی ضربه بزنید</div>
+            <div id="camStatus" role="status" aria-live="polite" style="max-width:90%;margin:10px auto 0;color:#ffd180;font-size:12px;line-height:1.8;text-align:center;">برای دسترسی واقعی، صفحه باید با HTTPS یا localhost باز شود.</div>
+            <button class="btn-icon" style="margin-top:18px;background:rgba(255,255,255,0.15);border-radius:24px;padding:10px 22px;width:auto;font-size:14px;font-family:inherit;" onclick="vibrate(); startCamera()">روشن کردن دوربین</button>
+          </div>
+        </div>
+        <div class="camera-controls">
+          <div class="gallery-thumb" id="lastPhoto" onclick="vibrate(); openGallery()">
+            <img src="" id="lastPhotoImg" style="display:none;">
+          </div>
+          <div class="shutter" onclick="vibrate(); takePhoto()"><div class="shutter-inner"></div></div>
+          <button class="flip-btn" onclick="vibrate(); flipCamera()">🔄</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP: MUSIC -->
+    <div class="app-screen" id="app-music">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>پخش موسیقی</h2>
+      </div>
+      <div class="app-body">
+        <div class="music-player">
+          <div class="album-art" id="albumArt">
+            <canvas id="visualizer"></canvas>
+            🎵
+          </div>
+          <div class="track-info">
+            <div class="track-title" id="trackTitle">آهنگی انتخاب نشده</div>
+            <div class="track-artist" id="trackArtist">فایل صوتی اضافه کنید</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar" id="progressBar" ontouchstart="seekStart(event)" onclick="seekMusic(event)">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="time-row">
+              <span id="currentTime">0:00</span>
+              <span id="duration">0:00</span>
+            </div>
+          </div>
+          <div class="music-controls">
+            <button class="music-btn" onclick="vibrate(); prevTrack()">⏮️</button>
+            <button class="music-btn big" id="playBtn" onclick="vibrate(); togglePlay()">▶️</button>
+            <button class="music-btn" onclick="vibrate(); nextTrack()">⏭️</button>
+          </div>
+          <div class="upload-wrap">
+            <label class="file-label">
+              <span>➕ افزودن آهنگ از گوشی</span>
+              <input type="file" class="file-input" id="musicInput" accept="audio/*" multiple onchange="addTracks(this)">
+            </label>
+          </div>
+          <div class="playlist" id="playlist"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP: RECORDER -->
+    <div class="app-screen" id="app-recorder">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>ضبط صدا</h2>
+      </div>
+      <div class="app-body">
+        <div class="rec-container">
+          <div class="rec-visualizer"><canvas id="recCanvas"></canvas></div>
+          <div class="rec-timer" id="recTimer">00:00</div>
+          <button class="rec-btn stopped" id="recBtn" onclick="vibrate(); toggleRecord()">🎙️</button>
+          <div class="rec-status" id="recStatus">برای ضبط دکمه را فشار دهید</div>
+          <div class="recordings" id="recordings"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP: GALLERY -->
+    <div class="app-screen" id="app-gallery">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>گالری</h2>
+      </div>
+      <div class="app-body">
+        <div class="gallery-grid" id="galleryGrid"></div>
+        <div id="galleryEmpty" style="text-align:center;color:var(--ink-muted);padding:40px 20px;font-size:14px;">
+          هنوز عکسی گرفته نشده<br>به برنامه دوربین بروید و عکس بگیرید
+        </div>
+      </div>
+    </div>
+
+    <!-- APP: SETTINGS -->
+    <div class="app-screen" id="app-settings">
+      <div class="app-header">
+        <button class="btn-icon back-button" aria-label="بازگشت به صفحه قبل" onclick="vibrate(); backApp()">← بازگشت</button>
+        <h2>تنظیمات</h2>
+      </div>
+      <div class="app-body" style="color:var(--ink-muted);padding-top:30px;">
+        <div style="background:var(--surface);border-radius:var(--radius-sm);padding:18px;margin-bottom:14px;">
+          <div style="color:var(--ink);font-weight:700;margin-bottom:6px;">📱 درباره دستگاه</div>
+          <div style="font-size:14px;">Android 14 Simulator</div>
+          <div style="font-size:13px;margin-top:4px;opacity:0.8;">Web-based mobile experience</div>
+        </div>
+        <div style="background:var(--surface);border-radius:var(--radius-sm);padding:18px;margin-bottom:14px;">
+          <div style="color:var(--ink);font-weight:700;margin-bottom:6px;">🔋 باتری</div>
+          <div style="font-size:14px;">88% - در حال شارژ</div>
+        </div>
+        <div style="background:var(--surface);border-radius:var(--radius-sm);padding:18px;margin-bottom:14px;">
+          <div style="color:var(--ink);font-weight:700;margin-bottom:6px;">📳 لرزش</div>
+          <div style="font-size:14px;">فعال</div>
+        </div>
+        <div style="background:var(--surface);border-radius:var(--radius-sm);padding:18px;">
+          <div style="color:var(--ink);font-weight:700;margin-bottom:6px;">🌐 شبکه</div>
+          <div style="font-size:14px;">5G - ایرانسل</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal" id="modal" onclick="closeModal()">
+      <button class="close" onclick="closeModal()">✕</button>
+      <img id="modalImg" src="" alt="photo">
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<audio id="audioPlayer"></audio>
+
+<script>
+/* ===== VIBRATE ===== */
+function vibrate(ms=18) {
+  if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+/* ===== CLOCK ===== */
+function updateClock() {
+  const now = new Date();
+  const hm = now.toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit', hour12:false});
+  document.getElementById('clock').textContent = hm;
+  document.getElementById('lockTime').textContent = hm;
+  const opts = {weekday:'long', year:'numeric', month:'long', day:'numeric'};
+  document.getElementById('lockDate').textContent = now.toLocaleDateString('fa-IR', opts);
+}
+setInterval(updateClock, 1000); updateClock();
+
+/* ===== LOCK ===== */
+function unlock() {
+  vibrate(25);
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('homeScreen').classList.add('active');
+}
+
+/* ===== APPS ===== */
+let appHistory = [];
+function openApp(id) {
+  vibrate(20);
+  const el = document.getElementById('app-' + id);
+  if (!el) return;
+  const current = document.querySelector('.app-screen.open');
+  if (current && current.id !== el.id) appHistory.push(current.id);
+  el.classList.add('open');
+}
+function backApp() {
+  const current = document.querySelector('.app-screen.open');
+  if (!current) return;
+  current.classList.remove('open');
+  if (current.id === 'app-camera') stopCamera();
+  if (current.id === 'app-recorder' && isRecording) stopRecord();
+  const previousId = appHistory.pop();
+  if (previousId) document.getElementById(previousId)?.classList.add('open');
+}
+function closeApp() { backApp(); }
+// Support the browser/device Back action as well as the on-screen button.
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' || event.key === 'Backspace') {
+    if (event.target && /INPUT|TEXTAREA/.test(event.target.tagName)) return;
+    backApp();
+  }
+});
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ===== CALCULATOR ===== */
+let calcExpr = '';
+function calcIns(ch) {
+  calcExpr += ch;
+  document.getElementById('calcResult').textContent = calcExpr || '0';
+}
+function calcClear() {
+  calcExpr = '';
+  document.getElementById('calcResult').textContent = '0';
+  document.getElementById('calcHistory').textContent = '';
+}
+function calcEqual() {
+  try {
+    if (!calcExpr) return;
+    const res = Function('"use strict"; return (' + calcExpr + ')')();
+    document.getElementById('calcHistory').textContent = calcExpr + ' =';
+    calcExpr = String(res);
+    document.getElementById('calcResult').textContent = calcExpr;
+  } catch (e) {
+    document.getElementById('calcResult').textContent = 'خطا';
+  }
+}
+
+/* ===== CAMERA ===== */
+let stream = null;
+let facing = 'environment';
+const video = document.getElementById('camVideo');
+const canvas = document.getElementById('camCanvas');
+const placeholder = document.getElementById('camPlaceholder');
+
+async function startCamera() {
+  const status = document.getElementById('camStatus');
+  const setStatus = (message) => { if (status) status.textContent = message; };
+  try {
+    if (!window.isSecureContext) {
+      throw new Error('SECURE_CONTEXT: این صفحه با اتصال امن باز نشده است. فایل را روی یک سایت HTTPS یا localhost اجرا کنید؛ پیش‌نمایش فایل و آدرس file:// معمولاً اجازه دوربین نمی‌دهند.');
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      throw new Error('API_UNAVAILABLE: مرورگر فعلی دسترسی دوربین را ارائه نمی‌کند. صفحه را مستقیماً در Chrome یا Safari و با HTTPS باز کنید.');
+    }
+    if (stream) stopCamera();
+    setStatus('در حال درخواست اجازه دوربین از مرورگر…');
+    // Request the rear camera first; retry with a generic camera constraint if unsupported.
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+    } catch (firstError) {
+      if (firstError.name === 'OverconstrainedError' || firstError.name === 'ConstraintNotSatisfiedError') {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } else {
+        throw firstError;
+      }
+    }
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    video.style.display = 'block';
+    await video.play();
+    placeholder.style.display = 'none';
+    document.getElementById('camOverlay').style.display = 'block';
+    showToast('دوربین واقعی دستگاه متصل شد 📷');
+  } catch (err) {
+    if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+    video.srcObject = null;
+    video.style.display = 'none';
+    placeholder.style.display = 'flex';
+    document.getElementById('camOverlay').style.display = 'none';
+    let message = err.message || 'خطای ناشناخته';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || message.startsWith('API_UNAVAILABLE:')) {
+      message = 'اجازه دوربین داده نشد یا مرورگر آن را مسدود کرده است. مجوز Camera را برای همین سایت در تنظیمات مرورگر روی Allow بگذارید. اگر صفحه داخل پیش‌نمایش یک برنامه باز شده، آن را در مرورگر اصلی باز کنید.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      message = 'دوربینی در این دستگاه پیدا نشد.';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      message = 'دوربین در حال استفاده توسط برنامه دیگری است؛ برنامه‌های دوربین را ببندید و دوباره تلاش کنید.';
+    } else if (message.startsWith('SECURE_CONTEXT:')) {
+      message = message.replace('SECURE_CONTEXT: ', '');
+    }
+    setStatus(message);
+    showToast('اتصال دوربین ناموفق بود');
+    console.error('Camera error:', err);
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  video.srcObject = null;
+  video.style.display = 'none';
+  placeholder.style.display = 'flex';
+  document.getElementById('camOverlay').style.display = 'none';
+}
+function flipCamera() {
+  facing = facing === 'environment' ? 'user' : 'environment';
+  if (stream) { stopCamera(); startCamera(); }
+}
+function takePhoto() {
+  if (!stream) { showToast('ابتدا دوربین را روشن کنید'); return; }
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+  if (facing === 'user') {
+    ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  savePhoto(dataUrl);
+  vibrate([30, 50, 30]);
+  showToast('عکس گرفته شد 📸');
+}
+
+let photos = [];
+function savePhoto(dataUrl) {
+  photos.unshift(dataUrl);
+  const thumb = document.getElementById('lastPhotoImg');
+  thumb.src = dataUrl; thumb.style.display = 'block';
+  renderGallery();
+}
+function renderGallery() {
+  const grid = document.getElementById('galleryGrid');
+  const empty = document.getElementById('galleryEmpty');
+  if (photos.length) empty.style.display = 'none';
+  grid.innerHTML = photos.map((src, i) => `<img src="${src}" onclick="vibrate(); openModal('${src}')" alt="photo">`).join('');
+}
+function openGallery() { openApp('gallery'); }
+function openModal(src) { document.getElementById('modalImg').src = src; document.getElementById('modal').style.display = 'flex'; }
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+/* ===== MUSIC ===== */
+const audio = document.getElementById('audioPlayer');
+let tracks = [];
+let currentIndex = -1;
+let isPlaying = false;
+let audioCtx, analyser, dataArray, source;
+
+function initAudioContext() {
+  if (audioCtx) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
+  source = audioCtx.createMediaElementSource(audio);
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  drawVisualizer();
+}
+
+function addTracks(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  files.forEach(file => {
+    const url = URL.createObjectURL(file);
+    tracks.push({ title: file.name.replace(/\.[^/.]+$/, ""), url, duration: 0 });
+  });
+  if (currentIndex === -1) { currentIndex = 0; loadTrack(0); }
+  renderPlaylist();
+  showToast(files.length + ' آهنگ اضافه شد 🎵');
+}
+function renderPlaylist() {
+  const pl = document.getElementById('playlist');
+  pl.innerHTML = tracks.map((t, i) => `
+    <div class="playlist-item ${i===currentIndex?'active':''}" onclick="vibrate(); playTrack(${i})">
+      <div class="pl-num">${i+1}</div>
+      <div class="pl-info">
+        <div class="pl-title">${t.title}</div>
+        <div class="pl-dur">${formatTime(t.duration)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function loadTrack(i) {
+  if (i < 0 || i >= tracks.length) return;
+  currentIndex = i;
+  audio.src = tracks[i].url;
+  document.getElementById('trackTitle').textContent = tracks[i].title;
+  document.getElementById('trackArtist').textContent = 'آهنگ ' + (i+1) + ' از ' + tracks.length;
+  audio.onloadedmetadata = () => {
+    tracks[i].duration = audio.duration;
+    document.getElementById('duration').textContent = formatTime(audio.duration);
+    renderPlaylist();
+  };
+  isPlaying = false; updatePlayBtn();
+}
+function playTrack(i) { loadTrack(i); togglePlay(); }
+function togglePlay() {
+  if (!audio.src && tracks.length) { playTrack(0); return; }
+  if (!audio.src) { showToast('ابتدا فایل صوتی اضافه کنید'); return; }
+  initAudioContext();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (audio.paused) { audio.play(); isPlaying = true; }
+  else { audio.pause(); isPlaying = false; }
+  updatePlayBtn();
+}
+function updatePlayBtn() { document.getElementById('playBtn').textContent = isPlaying ? '⏸️' : '▶️'; }
+function nextTrack() { if (tracks.length) playTrack((currentIndex + 1) % tracks.length); }
+function prevTrack() { if (tracks.length) playTrack((currentIndex - 1 + tracks.length) % tracks.length); }
+function formatTime(s) { if (!s) return '0:00'; const m = Math.floor(s/60); const sec = Math.floor(s%60); return m + ':' + (sec<10?'0':'') + sec; }
+function seekMusic(e) {
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pct * audio.duration;
+}
+function seekStart(e) {
+  e.preventDefault();
+  const bar = document.getElementById('progressBar');
+  const move = ev => {
+    const rect = bar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (ev.touches[0].clientX - rect.left) / rect.width));
+    if (audio.duration) audio.currentTime = pct * audio.duration;
+  };
+  const end = () => { bar.removeEventListener('touchmove', move); bar.removeEventListener('touchend', end); };
+  bar.addEventListener('touchmove', move);
+  bar.addEventListener('touchend', end);
+}
+audio.ontimeupdate = () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+};
+audio.onended = () => { isPlaying = false; updatePlayBtn(); nextTrack(); };
+
+/* Visualizer */
+const vizCanvas = document.getElementById('visualizer');
+const vizCtx = vizCanvas ? vizCanvas.getContext('2d') : null;
+function drawVisualizer() {
+  if (!vizCtx || !analyser) return;
+  requestAnimationFrame(drawVisualizer);
+  analyser.getByteFrequencyData(dataArray);
+  const w = vizCanvas.width = vizCanvas.offsetWidth;
+  const h = vizCanvas.height = vizCanvas.offsetHeight;
+  vizCtx.clearRect(0, 0, w, h);
+  const barW = w / dataArray.length;
+  for (let i = 0; i < dataArray.length; i++) {
+    const barH = (dataArray[i] / 255) * h * 0.8;
+    const x = i * barW;
+    const y = h - barH;
+    vizCtx.fillStyle = `rgba(255,255,255,${0.3 + (dataArray[i]/255)*0.5})`;
+    vizCtx.fillRect(x, y, barW - 1, barH);
+  }
+}
+
+/* ===== RECORDER ===== */
+let isRecording = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recStartTime = 0;
+let recTimerInterval = null;
+let recStream = null;
+const recBtn = document.getElementById('recBtn');
+const recStatus = document.getElementById('recStatus');
+const recTimer = document.getElementById('recTimer');
+const recCanvas = document.getElementById('recCanvas');
+const recCtx = recCanvas.getContext('2d');
+let recAni, recAnalyser, recDataArray, recAudioCtx, recSource;
+
+async function toggleRecord() {
+  if (isRecording) { stopRecord(); return; }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(recStream);
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = saveRecording;
+    mediaRecorder.start(100);
+    isRecording = true;
+    recBtn.className = 'rec-btn recording'; recBtn.textContent = '⏹️';
+    recStatus.textContent = 'در حال ضبط...';
+    recStartTime = Date.now();
+    recTimerInterval = setInterval(updateRecTimer, 1000);
+    vibrate([40, 60, 40]);
+    initRecVisualizer(recStream);
+  } catch (err) {
+    showToast('خطا در دسترسی به میکروفن: ' + err.message);
+  }
+}
+function stopRecord() {
+  if (!isRecording) return;
+  isRecording = false;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (recStream) recStream.getTracks().forEach(t => t.stop());
+  clearInterval(recTimerInterval);
+  recBtn.className = 'rec-btn stopped'; recBtn.textContent = '🎙️';
+  recStatus.textContent = 'ضبط متوقف شد';
+  cancelAnimationFrame(recAni);
+  recCtx.clearRect(0, 0, recCanvas.width, recCanvas.height);
+  vibrate(30);
+}
+function updateRecTimer() {
+  const sec = Math.floor((Date.now() - recStartTime) / 1000);
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  recTimer.textContent = m + ':' + s;
+}
+function saveRecording() {
+  const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+  const url = URL.createObjectURL(blob);
+  const dateStr = new Date().toLocaleTimeString('fa-IR');
+  const item = document.createElement('div');
+  item.className = 'rec-item';
+  item.innerHTML = `<div style="flex:1;font-size:14px;">🎙️ ضبط ${dateStr}</div>
+    <button onclick="playRec(this,'${url}')">▶️</button>
+    <button onclick="downloadRec('${url}')">⬇️</button>`;
+  document.getElementById('recordings').prepend(item);
+  showToast('صدا ضبط و ذخیره شد 🎙️');
+}
+function playRec(btn, url) {
+  const a = new Audio(url);
+  a.play();
+  btn.textContent = '⏸️';
+  a.onended = () => btn.textContent = '▶️';
+}
+function downloadRec(url) {
+  const a = document.createElement('a');
+  a.href = url; a.download = 'recording_' + Date.now() + '.webm';
+  a.click();
+}
+function initRecVisualizer(stream) {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  recAudioCtx = new AudioContext();
+  recSource = recAudioCtx.createMediaStreamSource(stream);
+  recAnalyser = recAudioCtx.createAnalyser();
+  recAnalyser.fftSize = 128;
+  recSource.connect(recAnalyser);
+  recDataArray = new Uint8Array(recAnalyser.frequencyBinCount);
+  drawRecVisualizer();
+}
+function drawRecVisualizer() {
+  if (!isRecording) return;
+  recAni = requestAnimationFrame(drawRecVisualizer);
+  recAnalyser.getByteTimeDomainData(recDataArray);
+  const w = recCanvas.width = recCanvas.offsetWidth;
+  const h = recCanvas.height = recCanvas.offsetHeight;
+  recCtx.fillStyle = '#121212'; recCtx.fillRect(0, 0, w, h);
+  recCtx.lineWidth = 2; recCtx.strokeStyle = '#f44336';
+  recCtx.beginPath();
+  const slice = w / recDataArray.length;
+  for (let i = 0; i < recDataArray.length; i++) {
+    const v = recDataArray[i] / 128.0;
+    const y = v * h / 2;
+    if (i === 0) recCtx.moveTo(0, y); else recCtx.lineTo(i * slice, y);
+  }
+  recCtx.stroke();
+}
+
+/* ===== FULLSCREEN ON DOUBLE TAP (optional) ===== */
+let lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTap < 300) {
+    if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  }
+  lastTap = now;
+});
+</script>
+</body>
+</html>
